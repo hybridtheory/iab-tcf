@@ -1,4 +1,4 @@
-module github.com/affectv/consent
+module github.com/affectv/iab-tcf
 
 go 1.14
 
