@@ -1,0 +1,41 @@
+version: 2
+jobs:
+  unit-testing:
+    working_directory: ~/src/github.com/affectv/iab-tcf
+    docker:
+      - image: golang:1.13-stretch
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+          - v1-go-dependencies-{{ checksum "go.mod" }}-{{ checksum "go.sum" }}
+      - run:
+          name: Install test framework
+          command: |
+            go get -u -v github.com/onsi/ginkgo/ginkgo
+            go get -u -v github.com/onsi/gomega
+      - run:
+          name: Running Unit Tests
+          command: |
+            ginkgo -cover -race -outputdir=./ ./...
+      - run:
+          name: Generate code coverage
+          command: |
+            echo "mode: set" > coverage.out
+            cat *.coverprofile | grep -v mode: | sort -r | awk '{if($1 != last) {print $0;last=$1}}' >> coverage.out
+            go tool cover -html=coverage.out -o coverage.html
+      - store_artifacts:
+          path: coverage.html
+          destination: coverage
+      - store_test_results:
+          path: test-reports
+      - save_cache:
+          paths:
+            - "/go/pkg/mod"
+          key: v1-go-dependencies-{{ checksum "go.mod" }}-{{ checksum "go.sum" }}
+
+workflows:
+  version: 2
+  iab-tcf:
+    jobs:
+      - unit-testing
