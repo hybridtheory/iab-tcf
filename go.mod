@@ -1,4 +1,4 @@
-module github.com/affectv/iab-tcf
+module github.com/hybridtheory/iab-tcf
 
 go 1.14
 
