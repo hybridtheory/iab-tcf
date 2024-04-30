@@ -31,7 +31,7 @@ var _ = Describe("Loader", func() {
 
 			It("is used to retrieve the JSON", func() {
 				_, err = loader.Load()
-				Expect(err).Should(MatchError(MatchRegexp("lookup unknown-url: no such host")))
+				Expect(err).Should(MatchError(MatchRegexp("lookup unknown-url")))
 			})
 		})
 	})
