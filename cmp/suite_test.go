@@ -1,4 +1,4 @@
-package iab_tcf_test
+package cmp_test
 
 import (
 	"testing"
@@ -9,5 +9,5 @@ import (
 
 func TestHandlers(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Consent suite")
+	RunSpecs(t, "Consent suite: CMP")
 }

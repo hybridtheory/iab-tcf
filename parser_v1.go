@@ -1,12 +1,16 @@
 package iab_tcf
 
 import (
+	"slices"
+
 	"github.com/LiveRamp/iabconsent"
+	"github.com/hybridtheory/iab-tcf/cmp"
 )
 
 // ConsentV1 is an implementation of the Consent interface used to retrieve
 // consent information given a TCF 1.0 format.
 type ConsentV1 struct {
+	*cmp.Consent
 	ParsedConsent *iabconsent.ParsedConsent
 }
 
@@ -25,6 +29,16 @@ func NewConsentV1(reader *iabconsent.ConsentReader) (Consent, error) {
 // Version returns the version of this consent string.
 func (c *ConsentV1) Version() int {
 	return int(iabconsent.V1)
+}
+
+// CMPID returns the CMP ID of this consent string.
+func (c *ConsentV1) CMPID() int {
+	return c.ParsedConsent.CMPID
+}
+
+// IsCMPValid validates the consent string CMP ID agains the list of valid ones downloaded from IAB.
+func (c *ConsentV1) IsCMPValid() bool {
+	return slices.Contains(c.ValidCMPs(), c.CMPID())
 }
 
 // HasConsentedPurpose returns always true because consent TFC 1.0 doesn't
@@ -79,7 +93,7 @@ func (c *ConsentV1) GetInterestsBitstring() string {
 
 // GetPublisherRestrictions returns an empty list because consent TFC 1.0 doesn't
 // implement user legitimate interests.
-func (c *ConsentV1) GetPublisherRestrictions() ([]*iabconsent.PubRestrictionEntry) {
+func (c *ConsentV1) GetPublisherRestrictions() []*iabconsent.PubRestrictionEntry {
 	return make([]*iabconsent.PubRestrictionEntry, 0, 0)
 }
 
@@ -88,7 +102,9 @@ func (c *ConsentV1) GetPublisherRestrictions() ([]*iabconsent.PubRestrictionEntr
 func ParseV1(r *iabconsent.ConsentReader) (*iabconsent.ParsedConsent, error) {
 	var p = &iabconsent.ParsedConsent{}
 	p.Version = int(iabconsent.V1)
-	r.ReadString(17)
+	r.ReadString(12)
+	p.CMPID, _ = r.ReadInt(12)
+	r.ReadString(3)
 	p.ConsentLanguage, _ = r.ReadString(2)
 	p.VendorListVersion, _ = r.ReadInt(12)
 	p.PurposesAllowed, _ = r.ReadBitField(24)

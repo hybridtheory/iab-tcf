@@ -1,12 +1,16 @@
 package iab_tcf
 
 import (
+	"slices"
+
 	"github.com/LiveRamp/iabconsent"
+	"github.com/hybridtheory/iab-tcf/cmp"
 )
 
 // ConsentV2 is an implementation of the Consent interface used to retrieve
 // consent information given a TCF 1.0 format.
 type ConsentV2 struct {
+	cmp.Consent
 	ParsedConsent *iabconsent.V2ParsedConsent
 }
 
@@ -27,6 +31,16 @@ func (c *ConsentV2) Version() int {
 	return int(iabconsent.V2)
 }
 
+// CMPID returns the CMP ID of this consent string.
+func (c *ConsentV2) CMPID() int {
+	return c.ParsedConsent.CMPID
+}
+
+// IsCMPValid validates the consent string CMP ID agains the list of valid ones downloaded from IAB.
+func (c *ConsentV2) IsCMPValid() bool {
+	return slices.Contains(c.ValidCMPs(), c.CMPID())
+}
+
 // HasConsentedPurpose returns the consent value for a Purpose established on the legal basis of consent.
 // The Purposes are numerically identified and published in the Global Vendor List.
 func (c *ConsentV2) HasConsentedPurpose(purposeID int) bool {
@@ -43,15 +57,15 @@ func (c *ConsentV2) GetConsentPurposeBitstring() string {
 	return bitString
 }
 
-// HasConsentedLegitimateInterestForPurpose returns the Purpose’s transparency requirements 
-// are met for each Purpose on the legal basis of legitimate interest and the user has not 
-// exercised their “Right to Object” to that Purpose. 
+// HasConsentedLegitimateInterestForPurpose returns the Purpose’s transparency requirements
+// are met for each Purpose on the legal basis of legitimate interest and the user has not
+// exercised their “Right to Object” to that Purpose.
 func (c *ConsentV2) HasConsentedLegitimateInterestForPurpose(purposeID int) bool {
 	return c.ParsedConsent.PurposesLITransparency[purposeID]
 }
 
 // HasUserConsented returns true if the user has given consent to the vendorID passed
-// as parameter. 
+// as parameter.
 func (c *ConsentV2) HasUserConsented(vendorID int) bool {
 	if c.ParsedConsent.IsConsentRangeEncoding {
 		for _, re := range c.ParsedConsent.ConsentedVendorsRange {
@@ -100,7 +114,7 @@ func (c *ConsentV2) GetInterestsBitstring() string {
 }
 
 // GetPublisherRestrictions returns a list of restrictions per publisher, if it relates.
-func (c *ConsentV2) GetPublisherRestrictions() ([]*iabconsent.PubRestrictionEntry) {
+func (c *ConsentV2) GetPublisherRestrictions() []*iabconsent.PubRestrictionEntry {
 	return c.ParsedConsent.PubRestrictionEntries
 }
 
@@ -109,7 +123,9 @@ func (c *ConsentV2) GetPublisherRestrictions() ([]*iabconsent.PubRestrictionEntr
 func ParseV2(r *iabconsent.ConsentReader) (*iabconsent.V2ParsedConsent, error) {
 	var p = &iabconsent.V2ParsedConsent{}
 	p.Version = int(iabconsent.V2)
-	r.ReadString(17)
+	r.ReadString(12)
+	p.CMPID, _ = r.ReadInt(12)
+	r.ReadString(3)
 	p.ConsentLanguage, _ = r.ReadString(2)
 	p.VendorListVersion, _ = r.ReadInt(12)
 	p.TCFPolicyVersion, _ = r.ReadInt(6)

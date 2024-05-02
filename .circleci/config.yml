@@ -1,9 +1,9 @@
 version: 2
 jobs:
   unit-testing:
-    working_directory: ~/src/github.com/affectv/iab-tcf
+    working_directory: ~/src/github.com/hybridtheory/iab-tcf
     docker:
-      - image: golang:1.13-stretch
+      - image: golang:1.21-bullseye
         auth:
           username: $DOCKERHUB_USERNAME
           password: $DOCKERHUB_PASSWORD
@@ -11,31 +11,34 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-          - v1-go-dependencies-{{ checksum "go.mod" }}-{{ checksum "go.sum" }}
+            - v1-go-dependencies-{{ checksum "go.mod" }}-{{ checksum "go.sum" }}
       - run:
           name: Install test framework
           command: |
-            go get -u -v github.com/onsi/ginkgo/ginkgo
-            go get -u -v github.com/onsi/gomega
+            go install github.com/onsi/ginkgo/v2/ginkgo
+            go install github.com/onsi/gomega/...
       - run:
           name: Running Unit Tests
           command: |
-            ginkgo -cover -race -outputdir=./ ./...
+            ginkgo --race -cover --junit-report=junit.xml --output-dir=./test-reports ./...
       - run:
           name: Generate code coverage
           command: |
-            echo "mode: set" > coverage.out
-            cat *.coverprofile | grep -v mode: | sort -r | awk '{if($1 != last) {print $0;last=$1}}' >> coverage.out
-            go tool cover -html=coverage.out -o coverage.html
+            go tool cover -html=./test-reports/coverprofile.out -o ./test-reports/coverage.html
       - store_artifacts:
-          path: coverage.html
-          destination: coverage
+          path: ./test-reports/
+          destination: artifacts
       - store_test_results:
           path: test-reports
       - save_cache:
           paths:
             - "/go/pkg/mod"
           key: v1-go-dependencies-{{ checksum "go.mod" }}-{{ checksum "go.sum" }}
+      - run:
+          name: codacy coverage
+          command: |
+            export CODACY_PROJECT_NAME=iab-tcf
+            bash <(curl -Lks https://coverage.codacy.com/get.sh) report --force-coverage-parser go -r ./test-reports/coverprofile.out
 
 workflows:
   version: 2
