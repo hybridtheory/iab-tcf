@@ -2,6 +2,7 @@ package cmp
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 
 	"golang.org/x/exp/maps"
@@ -20,7 +21,8 @@ type Option func(loader *Loader)
 
 // Loader is the type that contains the logic to load and parse a CMP JSON list.
 type Loader struct {
-	URL string
+	URL  string
+	JSON string
 }
 
 // CMP contains the structure of the CMP info that comes inside the JSON
@@ -38,6 +40,14 @@ func WithURL(url string) Option {
 	}
 }
 
+// WithJSON allows to pass a JSON string loaded externally so our loader
+// will parse the cmp-list JSON format for you.
+func WithJSON(json string) Option {
+	return func(cmp *Loader) {
+		cmp.JSON = json
+	}
+}
+
 // NewLoader returns a CMP vendor list loader instance.
 func NewLoader(options ...Option) *Loader {
 	loader := &Loader{
@@ -50,24 +60,39 @@ func NewLoader(options ...Option) *Loader {
 }
 
 // Unmarshal parses the JSON vendor list into a struct so we can use them.
-func (loader *Loader) Unmarshal(response *http.Response) ([]CMP, error) {
+func (loader *Loader) Unmarshal(data []byte) ([]CMP, error) {
 	type Response struct {
 		CMPS map[string]CMP `json:"cmps"`
 	}
-	data := Response{}
-	if err := json.NewDecoder(response.Body).Decode(&data); err != nil {
+	response := Response{}
+	if err := json.Unmarshal(data, &response); err != nil {
 		return []CMP{}, err
 	}
-	return maps.Values(data.CMPS), nil
+	return maps.Values(response.CMPS), nil
 }
 
-// Load is used to load the vendor list into a list of CMP information.
-func (loader *Loader) Load() ([]CMP, error) {
+// LoadHTTP is used to load the vendor list from a HTTP url.
+func (loader *Loader) LoadHTTP() ([]CMP, error) {
 	response, err := http.Get(loader.URL)
 	if err == nil {
-		return loader.Unmarshal(response)
+		if data, err := io.ReadAll(response.Body); err == nil {
+			return loader.Unmarshal(data)
+		}
 	}
 	return []CMP{}, err
+}
+
+// LoadJSON is used to load the vendor list from a received JSON string.
+func (loader *Loader) LoadJSON() ([]CMP, error) {
+	return loader.Unmarshal([]byte(loader.JSON))
+}
+
+// Load decides which CMP list we are going to load.
+func (loader *Loader) Load() ([]CMP, error) {
+	if loader.JSON != "" {
+		return loader.LoadJSON()
+	}
+	return loader.LoadHTTP()
 }
 
 // LoadIDs loads the list of vendor CMP ids globally so we can reuse it

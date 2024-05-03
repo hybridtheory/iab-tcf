@@ -1,0 +1,17 @@
+{
+  "lastUpdated": "2024-05-03T00:00:00Z",
+  "cmps": {
+    "1": {
+      "id": 1,
+      "name": "CMP #1",
+      "isCommercial": true,
+      "environments": ["Web"]
+    },
+    "2": {
+      "id": 2,
+      "name": "CMP #2",
+      "isCommercial": false,
+      "environments": ["Smartphone"]
+    }
+  }
+}

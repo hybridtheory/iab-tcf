@@ -1,6 +1,8 @@
 package cmp_test
 
 import (
+	"os"
+
 	"github.com/hybridtheory/iab-tcf/cmp"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -27,11 +29,35 @@ var _ = Describe("Loader", func() {
 
 			BeforeEach(func() {
 				loader = cmp.NewLoader(cmp.WithURL(testURL))
+				err = loader.LoadIDs()
+			})
+
+			It("triggers an error because the url is not found", func() {
+				Expect(err).To(HaveOccurred())
 			})
 
 			It("is used to retrieve the JSON", func() {
-				_, err = loader.Load()
 				Expect(err).Should(MatchError(MatchRegexp("lookup unknown-url")))
+			})
+		})
+
+		Context("with json", func() {
+			const (
+				testJSONFile = "cmp_test.json"
+			)
+
+			BeforeEach(func() {
+				contents, _ := os.ReadFile(testJSONFile)
+				loader = cmp.NewLoader(cmp.WithJSON(string(contents)))
+				err = loader.LoadIDs()
+			})
+
+			It("does not trigger an error", func() {
+				Expect(err).ToNot(HaveOccurred())
+			})
+
+			It("is used to parse the JSON", func() {
+				Expect(cmp.ValidCMPs).Should(Equal([]int{1, 2}))
 			})
 		})
 	})
